@@ -2,48 +2,113 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Product Form</title>
+    <title>Product CRUD</title>
 </head>
 <body>
-    <h2>Welcome to my website</h2>
 
-    <form action="/add-product" method="POST">
-        <input type="text" name="name" placeholder="Enter product name" required>
-        <br><br>
+<h2>Add Product</h2>
 
-        <input type="number" name="price" placeholder="Enter price" required>
-        <br><br>
+<form action="/add-product" method="POST">
+    <input type="text" name="name" placeholder="Name" required><br><br>
+    <input type="number" name="price" placeholder="Price" required><br><br>
+    <input type="text" name="category" placeholder="Category" required><br><br>
+    <button type="submit">Add</button>
+</form>
 
-        <input type="text" name="category" placeholder="Enter category" required>
-        <br><br>
+<hr>
 
-        <button type="submit">Submit</button>
-    </form>
+<!-- Hidden Edit Section -->
+<div id="editSection" style="display:none;">
+    <h2>Edit Product</h2>
 
-    <br>
-    <a href="/products" target="_blank">📦 View All Products (JSON)</a>
+    <input type="hidden" id="updateId">
 
+    <input type="text" id="updateName" placeholder="Name"><br><br>
+    <input type="number" id="updatePrice" placeholder="Price"><br><br>
+    <input type="text" id="updateCategory" placeholder="Category"><br><br>
 
-    <div>
-        <ul>
-            <li id="item"></li>
-        </ul>
-    </div>
+    <button onclick="updateProduct()">Update</button>
+</div>
 
-    <script>
-        // Fetch products from the server and display them
-        fetch('/products')
-            .then(response => response.json())
-            .then(data => {
-                const itemList = document.getElementById('item');
-                data.forEach(product => {
-                    const listItem = document.createElement('li');
-                    listItem.textContent = `Name: ${product.name}, Price: ${product.price}, Category: ${product.category}`;
-                    itemList.appendChild(listItem);
-                });
-            })
-            .catch(error => console.error('Error fetching products:', error));
-    </script>
+<hr>
+
+<h3>Products</h3>
+<ul id="item"></ul>
+
+<script>
+
+function loadProducts() {
+    fetch('/products')
+        .then(res => res.json())
+        .then(data => {
+            const list = document.getElementById('item');
+            list.innerHTML = "";
+
+            data.forEach(p => {
+                const li = document.createElement('li');
+
+                li.innerHTML = `
+                    <b>${p.name}</b> - $${p.price} (${p.category})
+                    <button onclick="deleteProduct('${p._id}')">❌</button>
+                    <button onclick="editProduct('${p._id}', '${p.name}', '${p.price}', '${p.category}')">✏️</button>
+                `;
+
+                list.appendChild(li);
+            });
+        });
+}
+
+function deleteProduct(id) {
+    fetch(`/delete-product/${id}`, { method: 'DELETE' })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) loadProducts();
+        });
+}
+
+function editProduct(id, name, price, category) {
+    document.getElementById('updateId').value = id;
+    document.getElementById('updateName').value = name;
+    document.getElementById('updatePrice').value = price;
+    document.getElementById('updateCategory').value = category;
+
+    // show form
+    document.getElementById('editSection').style.display = "block";
+}
+
+function updateProduct() {
+    const id = document.getElementById('updateId').value;
+
+    const updated = {
+        name: document.getElementById('updateName').value,
+        price: document.getElementById('updatePrice').value,
+        category: document.getElementById('updateCategory').value
+    };
+
+    fetch(`/update-product/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            loadProducts();
+
+            // clear + hide form
+            document.getElementById('editSection').style.display = "none";
+            document.getElementById('updateId').value = "";
+            document.getElementById('updateName').value = "";
+            document.getElementById('updatePrice').value = "";
+            document.getElementById('updateCategory').value = "";
+        }
+    });
+}
+
+// initial load
+loadProducts();
+
+</script>
+
 </body>
 </html>

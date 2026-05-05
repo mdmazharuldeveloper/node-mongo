@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { MongoClient } = require('mongodb');
+const { MongoClient, ObjectId } = require('mongodb');
 const path = require('path');
 
 const app = express();
@@ -9,7 +9,7 @@ const port = 3000;
 // middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true })); // ✅ FIX for form data
+app.use(express.urlencoded({ extended: true }));
 
 // MongoDB URI
 const uri = "mongodb+srv://shovon:shovon22@project1.ae1jeqa.mongodb.net/organicdb";
@@ -18,7 +18,7 @@ const client = new MongoClient(uri);
 
 let productsCollection;
 
-// connect to MongoDB
+// connect DB
 async function connectDB() {
     try {
         await client.connect();
@@ -28,56 +28,77 @@ async function connectDB() {
         productsCollection = db.collection("products");
 
     } catch (error) {
-        console.error("❌ MongoDB connection failed:", error);
+        console.error("❌ DB connection error:", error);
     }
 }
-
 connectDB();
 
-
-// serve HTML file
+// serve HTML
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-
-// ✅ INSERT PRODUCT
+// add product
 app.post('/add-product', async (req, res) => {
     try {
-        console.log("Form Data:", req.body); // debug
-
         const product = {
             name: req.body.name,
             price: parseFloat(req.body.price),
             category: req.body.category
         };
 
-        const result = await productsCollection.insertOne(product);
+        await productsCollection.insertOne(product);
 
-        res.send(`
-            <h2>✅ Product Added Successfully</h2>
-            <a href="/">Go Back</a>
-        `);
-
-    } catch (error) {
-        console.error(error);
-        res.status(500).send("❌ Failed to insert product");
+        res.send(`<h2>✅ Product Added</h2><a href="/">Go Back</a>`);
+    } catch (err) {
+        res.status(500).send("❌ Insert failed");
     }
 });
 
-
-// ✅ GET ALL PRODUCTS
+// get all products
 app.get('/products', async (req, res) => {
     try {
-        const products = await productsCollection.find().toArray();
-        res.json(products);
-    } catch (error) {
-        res.status(500).send("❌ Failed to fetch products");
+        const data = await productsCollection.find().toArray();
+        res.json(data);
+    } catch {
+        res.status(500).send("❌ Fetch failed");
     }
 });
 
+// delete product
+app.delete('/delete-product/:id', async (req, res) => {
+    try {
+        const result = await productsCollection.deleteOne({
+            _id: new ObjectId(req.params.id)
+        });
+
+        res.send({ success: result.deletedCount === 1 });
+    } catch {
+        res.status(500).send("❌ Delete failed");
+    }
+});
+
+// update product
+app.put('/update-product/:id', async (req, res) => {
+    try {
+        const result = await productsCollection.updateOne(
+            { _id: new ObjectId(req.params.id) },
+            {
+                $set: {
+                    name: req.body.name,
+                    price: parseFloat(req.body.price),
+                    category: req.body.category
+                }
+            }
+        );
+
+        res.send({ success: result.modifiedCount === 1 });
+    } catch {
+        res.status(500).send("❌ Update failed");
+    }
+});
 
 // start server
 app.listen(port, () => {
-    console.log(`🚀 Server running at http://localhost:${port}`);
+    console.log(`🚀 http://localhost:${port}`);
 });
